@@ -30,3 +30,5 @@ Notifies other components or elements of value changes.
 #### 1.Clone the repository.
 #### 2.Customize the range-bar by setting step sizes, restricted zones, and other parameters in the provided configuration.
 #### 3.Integrate with your project for a dynamic, interactive range slider.
+
+import #BootStrap #jquery
