@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Range Slider with Arrows</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .range-container {
+            max-width: 540px;
+            margin: 20px auto;
+            position: relative;
+        }
+        .range-bar {
+            position: relative;
+            height: 12px; 
+            background-color: #ddd; 
+            border-radius: 5px; 
+            margin-top: 10px; 
+            cursor: pointer; 
+        }
+        .range-fill {
+            position: absolute;
+            height: 100%;
+            background-color: #007bff; 
+            border-radius: 5px; 
+            z-index: 1; 
+        }
+        .thumb {
+            position: absolute;
+            width: 24px; 
+            height: 24px; 
+            background: #007bff;
+            border-radius: 50%; 
+            cursor: pointer; 
+            transform: translate(-50%, -50%); 
+            top: 50%; 
+            z-index: 2; 
+        }
+        .arrow {
+            position: absolute;
+            top: 1px; 
+            width: 8px; 
+            height: 10px; 
+            font-size: 12px; 
+            color: #222222; 
+            opacity: 0; 
+            pointer-events: none; 
+            z-index: 0; 
+            background-image: url('images/arrow.svg'); 
+            background-size: contain;
+            background-repeat: no-repeat; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container range-container">
+    <label for="customRange" class="form-label">Custom Range Slider</label>
+    <div class="range-bar" id="rangeBar" data-min="0" data-max="10000" data-step="100" data-dis-range="500" data-dis-range-percentage="0.12" data-current-value="0">
+        <div class="range-fill" id="rangeFill"></div>
+        <div class="thumb" id="thumb"></div>
+        <div id="arrowsContainer"></div>
+    </div>
+    <p>Current Value: <span class="rangeValue" id="rangeValue">0</span></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    function createArrows() {
+        const arrowsContainer = document.getElementById('arrowsContainer');
+        const arrowCount = 6; 
+
+        for (let i = 0; i < arrowCount; i++) {
+            const arrow = document.createElement('span');
+            arrow.className = 'arrow';
+            arrow.style.left = '0px'; 
+            arrowsContainer.appendChild(arrow);
+        }
+    }
+
+    function animateArrows() {
+        const arrows = document.querySelectorAll('.arrow');
+        const startPosition = 0; 
+        const moveThreshold = 30; 
+        const arrowCount = arrows.length;
+
+        let distances = Array(arrowCount).fill(0);
+        let initd = Array(arrowCount).fill(0);
+        initd[0] = true;
+
+        function moveArrows() {
+            let opSize = (moveThreshold * arrowCount) / 2;
+            for (let i = 0; i < arrowCount; i++) {
+                if (initd[i]) {
+                    distances[i] += 0.5; 
+                } else {
+                    continue;
+                }
+
+                const arrowPosition = startPosition + distances[i];
+                arrows[i].style.left = `${arrowPosition}px`; 
+
+                arrows[i].style.opacity = (distances[i] > opSize) ? (1 - (distances[i] - opSize) / opSize) : distances[i] / opSize;
+
+                if (i < arrowCount - 1 && distances[i] >= moveThreshold && !initd[i + 1]) {
+                    initd[i + 1] = true;
+                }
+
+                if (distances[i] >= moveThreshold * arrowCount) {
+                    distances[i] = 0; 
+                }
+            }
+
+            setTimeout(moveArrows, 15); 
+        }
+
+        moveArrows(); 
+    }
+
+    const otherControl = document.getElementById('rangeValue');
+    const rbar = document.getElementById('rangeBar');
+    rangeBar.addEventListener('valueChange', function (e) {
+        const newValue = e.detail.value; //  
+        otherControl.textContent = `${newValue}`;
+    });
+
+    function updateSlider(rangeBar) {
+        const min = parseFloat(rangeBar.dataset.min);
+        const max = parseFloat(rangeBar.dataset.max);
+        const step = parseFloat(rangeBar.dataset.step);
+        const disRange = parseFloat(rangeBar.dataset.disRange);
+        const disRangePercentage = parseFloat(rangeBar.dataset.disRangePercentage);
+        let currentValue = parseFloat(rangeBar.dataset.currentValue);
+
+        return function(value) {
+            currentValue = value;
+            rangeBar.dataset.currentValue = currentValue; 
+            const percentage = calculatePositionFromValue(min, max, step, disRange, disRangePercentage, value) * 100;
+            const thumb = rangeBar.querySelector('.thumb');
+            const rangeFill = rangeBar.querySelector('.range-fill');
+            thumb.style.left = `calc(${percentage}% )`; 
+            rangeFill.style.width = `${percentage}%`; 
+
+            const event = new CustomEvent('valueChange', {
+                detail: { value: value }
+            });
+            rangeBar.dispatchEvent(event); 
+        };
+    }
+
+    function calculatePositionFromValue(min, max, step, disRange, disRangePercentage, value) {
+        
+        if (value <= disRange) {
+            return value / (disRange/disRangePercentage);
+        } else {
+            return disRangePercentage + ((value - disRange) /(max-disRange)) * (1-disRangePercentage);
+        }
+    }
+
+    function calculateValueFromPosition(min, max, step, disRange, disRangePercentage,percentage) {
+        let value  = 0;
+        if (percentage <= disRangePercentage) {
+            value= Math.round(percentage * ( disRange/disRangePercentage)/step)*step; 
+        } else {
+            value = Math.round((disRange + (percentage - disRangePercentage) * (max-disRange) / (1-disRangePercentage))/step)*step; 
+        }
+
+        if(value<(disRange/2) )
+        {
+            value = 0;
+        }else if( value<disRange )
+        {
+            value = disRange;   
+        }
+        return value;
+    }
+
+    function calculateValueFromMousePosition(clientX) {
+        const barRect = rangeBar.getBoundingClientRect();
+        const offsetX = clientX - barRect.left;
+        const percentage = Math.min(Math.max(offsetX / barRect.width, 0), 1);
+        const min = parseFloat(rangeBar.dataset.min);
+        const max = parseFloat(rangeBar.dataset.max);
+        const step = parseFloat(rangeBar.dataset.step);
+        const disRange = parseFloat(rangeBar.dataset.disRange);
+        const disRangePercentage = parseFloat(rangeBar.dataset.disRangePercentage);
+        return calculateValueFromPosition(min, max, step, disRange,disRangePercentage,percentage);
+    }
+
+    document.querySelectorAll('.range-bar').forEach(rangeBar => {
+        const updateCurrentSlider = updateSlider(rangeBar); 
+
+        const min = parseFloat(rangeBar.dataset.min);
+        const max = parseFloat(rangeBar.dataset.max);
+        const step = parseFloat(rangeBar.dataset.step);
+        const disRange = parseFloat(rangeBar.dataset.disRange);
+        const disRangePercentage = parseFloat(rangeBar.dataset.disRangePercentage);
+
+        const thumb = rangeBar.querySelector('.thumb');
+        const rangeFill = rangeBar.querySelector('.range-fill');
+        thumb.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            const onMouseMove = (event) => {
+                const value = calculateValueFromMousePosition(event.clientX);
+                if (value >= parseFloat(rangeBar.dataset.min) && value <= parseFloat(rangeBar.dataset.max)) {
+                    updateCurrentSlider(value);
+                }
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        thumb.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            
+            const onTouchMove = (event) => {
+                const value = calculateValueFromMousePosition(event.touches[0]);
+                if (value >= parseFloat(rangeBar.dataset.min) && value <= parseFloat(rangeBar.dataset.max)) {
+                    updateCurrentSlider(value);
+                }
+            };
+
+            const onTouchEnd = () => {
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+            };
+
+            document.addEventListener('touchmove', onTouchMove);
+            document.addEventListener('touchend', onTouchEnd);
+        });
+       
+        function smoothMoveToPosition(event) {
+            enableSmoothTransition();
+            const value = calculateValueFromMousePosition(event.clientX || event.touches[0].clientX);
+            updateCurrentSlider(value);
+        }
+
+        function enableSmoothTransition() {
+            thumb.style.transition = 'left 0.2s ease';
+            rangeFill.style.transition = 'width 0.2s ease';
+        }
+
+        function disableSmoothTransition() {
+            thumb.style.transition = 'none';
+            rangeFill.style.transition = 'none';
+        }
+
+        let longPressTimer;
+        rangeBar.addEventListener('mousedown', (e) => {
+            if(e.target === thumb )
+                return;
+            e.preventDefault();
+            longPressTimer = setTimeout(() => smoothMoveToPosition(e), 80);
+        });
+        document.addEventListener('mouseup', () => {
+            clearTimeout(longPressTimer);
+            disableSmoothTransition();
+        });
+
+        rangeBar.addEventListener('touchstart', (e) => {
+            if(e.target === thumb )
+                return;
+            e.preventDefault();
+            longPressTimer = setTimeout(() => smoothMoveToPosition(e), 80); 
+        });
+        rangeBar.addEventListener('touchend', () => {
+            clearTimeout(longPressTimer);
+            disableSmoothTransition();
+        });
+
+
+    });
+
+
+
+    createArrows(); 
+    animateArrows(); 
+</script>
+
+</body>
+</html>
